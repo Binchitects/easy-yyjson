@@ -1,8 +1,11 @@
 #pragma once
 
+extern "C" {
+#include <yyjson.h>
+}
+
 #include <memory>
 #include <string>
-#include <yyjson.h>
 
 namespace EasyYYJSON
 {
@@ -16,14 +19,43 @@ namespace EasyYYJSON
     class ConstObject;
     class ConstDocument;
 
+    enum StringifyFlag
+    {
+        NoFlag              = 0x0000,
+        PrettyIndent        = 0x0001,
+        WideIndent          = 0x0002,
+        ASCIIOnly           = 0x0010,
+        AllowInvalidUnicode = 0x0020,
+        NewLineEnding       = 0x0100
+    }
+
     // Mutable json Document
     class Document
     {
         public:
             explicit Document();
+            explicit Document(const std::string &json);
+
+            bool parse(const std::string &json);
+
+            /*
+            * Faster parsing, json is not useable after calling this function
+            */
+            bool parseInSitu(std::string &json);
+
+            Value getRoot();
+            bool setRoot(Value &value);
+
+            std::string stringify(StringifyFlag flags = StringifyFlag::NoFlag);
+            friend std::ostream &operator << (std::ostream &os, const Document &doc)
+            {
+                os << doc.stringify(StringifyFlag::PrettyIndent | StringifyFlag::NewLineEnding);
+                return os;
+            }
         protected:
         private:
             std::shared_ptr<yyjson_mut_doc> _doc;
+            friend class Value;
     };
 
     // Mutable json Value
@@ -43,7 +75,9 @@ namespace EasyYYJSON
             explicit Array();
         protected:
         private:
+            explicit Array(std::shared_ptr<yyjson_mut_doc> doc, yyjson_mut_val *arr);
             std::shared_ptr<yyjson_mut_doc> _doc;
+            yyjson_mut_val *_arr;
     };
 
     // Mutable json Object
@@ -53,7 +87,9 @@ namespace EasyYYJSON
             explicit Object();
         protected:
         private:
+            explicit Object(std::shared_ptr<yyjson_mut_doc> doc, yyjson_mut_val *obj);
             std::shared_ptr<yyjson_mut_doc> _doc;
+            yyjson_mut_val *_obj;
     };
     
     // Immutable json document
